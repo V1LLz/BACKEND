@@ -9,7 +9,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
@@ -31,7 +30,7 @@ public class CustomSecurityFilter extends OncePerRequestFilter {
     @Autowired
     private rolRepository rolRepository;
 
-    private static final List<String> excludedRoutes = List.of("/auth/login", "/auth/logout", "/evento/getAll", "/post", "/post/{id}", "/post/{id}/user/{userId}");
+    private static final List<String> excludedRoutes = List.of("/auth/login", "/auth/logout", "/evento/getAll", "/post" , "/post/{id}" );
     @Autowired
     private ambar.springbootusers.Repositories.permisosRepository permisosRepository;
 
@@ -54,16 +53,20 @@ public class CustomSecurityFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
-
         Claims claims = jwtUtil.extractClaims(token);
         String rolId = claims.get("rolId", String.class);
+
         if (rolId == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("Missing role in JWT");
             return;
         }
 
-
+        // Permitir que el rol específico pase sin validar permisos
+        if ("6732f914249eeb08101d5c26".equals(rolId)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         rol rolUser = rolRepository.findById(rolId).orElse(null);
         if (rolUser == null) {
@@ -71,11 +74,13 @@ public class CustomSecurityFilter extends OncePerRequestFilter {
             response.getWriter().write("Invalid role");
             return;
         }
+
         System.out.println(endPoint);
         System.out.println(metodo);
         permiso permisoUser = permisosRepository.getpermisoByUrlAndMetodo(endPoint, metodo);
         List<PermisosRol> permisosRolUser = permisosRolRepository.getAllByRol(rolUser.get_id());
         Boolean hasPermisos = false;
+
         for (int i = 0; i < permisosRolUser.size(); i++) {
             String urlDb = permisosRolUser.get(i).getPermiso().getUrl();
             String metodoDb = permisosRolUser.get(i).getPermiso().getMetodo();
@@ -83,6 +88,7 @@ public class CustomSecurityFilter extends OncePerRequestFilter {
                 hasPermisos = true;
             }
         }
+
         if (!hasPermisos) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("Permission denied");
@@ -90,8 +96,6 @@ public class CustomSecurityFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
-
-
     }
 
     private String limpiarURL(String url) {

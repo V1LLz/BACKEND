@@ -101,7 +101,7 @@ public class userController {
             userGeneral Validacion = this.myUserRepo.findById(id).orElse(null);
             if (Validacion != null ){
                 userGeneral validarCorreo = this.myUserRepo.getUserGeneralByCorreo(usuario.getCorreo());
-                if (validarCorreo == null || validarCorreo.get_id() == id){
+                if (validarCorreo == null || (validarCorreo.get_id() == id && validarCorreo.get_id() != id)){
                     Validacion.setNombreApellido(usuario.getNombreApellido());
                     Validacion.setPassword(convertirSHA256(usuario.getPassword()));
                     Validacion.setCorreo(usuario.getCorreo());
